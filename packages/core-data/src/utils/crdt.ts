@@ -490,8 +490,12 @@ export function getPostChangesFromCRDTDoc(
 	// plain strings (from Y.Text.toJSON()). Convert them back to RichTextData
 	// so block edit components receive the same types as locally-created blocks.
 	if ( changes.blocks ) {
-		changes.blocks = deserializeBlockAttributes(
+		const deserialized = deserializeBlockAttributes(
 			changes.blocks as Block[]
+		);
+		changes.blocks = reconcileBlocks(
+			( editedRecord as any ).blocks,
+			deserialized
 		);
 	}
 
@@ -582,6 +586,56 @@ export function getRawValue( value?: unknown ): string | undefined {
 	}
 
 	return undefined;
+}
+
+function reconcileBlocks(
+	currentBlocks: Block[] | undefined,
+	nextBlocks: Block[]
+): Block[] {
+	if ( ! currentBlocks || currentBlocks.length === 0 ) {
+		return nextBlocks;
+	}
+
+	const currentBlocksMap = new Map< string, Block >();
+	const mapBlocks = ( blocks: Block[] ) => {
+		blocks.forEach( ( block ) => {
+			if ( block.clientId ) {
+				currentBlocksMap.set( block.clientId, block );
+			}
+			if ( block.innerBlocks ) {
+				mapBlocks( block.innerBlocks );
+			}
+		} );
+	};
+	mapBlocks( currentBlocks );
+
+	const reconcile = ( block: Block ): Block => {
+		if ( ! block.clientId ) {
+			return block;
+		}
+		const current = currentBlocksMap.get( block.clientId );
+		if ( ! current ) {
+			return block;
+		}
+
+		let reconciledInnerBlocks = block.innerBlocks;
+		if ( block.innerBlocks && block.innerBlocks.length > 0 ) {
+			reconciledInnerBlocks = block.innerBlocks.map( reconcile );
+		}
+
+		const reconciledBlock = {
+			...block,
+			innerBlocks: reconciledInnerBlocks,
+		};
+
+		if ( fastDeepEqual( current, reconciledBlock ) ) {
+			return current;
+		}
+
+		return reconciledBlock;
+	};
+
+	return nextBlocks.map( reconcile );
 }
 
 function haveValuesChanged< ValueType >(

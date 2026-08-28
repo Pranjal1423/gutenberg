@@ -756,6 +756,63 @@ describe( 'crdt', () => {
 			expect( block.attributes.content.text ).toBe( 'Hello world' );
 		} );
 
+		it( 'reconciles block references to preserve identity when content has not changed', () => {
+			addBlockToDoc( map, 'block-1', 'Hello world' );
+
+			const existingBlock = {
+				clientId: 'block-1',
+				name: 'core/paragraph',
+				attributes: {
+					content: RichTextData.fromHTMLString( 'Hello world' ),
+				},
+				innerBlocks: [],
+			} as unknown as Block;
+
+			const editedRecord = {
+				blocks: [ existingBlock ],
+			} as unknown as Post;
+
+			const changes = getPostChangesFromCRDTDoc(
+				doc,
+				editedRecord,
+				defaultSyncedProperties
+			);
+
+			const blockList = changes.blocks as Block[];
+			expect( blockList ).toBeDefined();
+			expect( blockList[ 0 ] ).toBe( existingBlock ); // Must be the exact same object reference
+		} );
+
+		it( 'does not reuse block reference when block content has changed', () => {
+			addBlockToDoc( map, 'block-1', 'Changed content' );
+
+			const existingBlock = {
+				clientId: 'block-1',
+				name: 'core/paragraph',
+				attributes: {
+					content: RichTextData.fromHTMLString( 'Hello world' ),
+				},
+				innerBlocks: [],
+			} as unknown as Block;
+
+			const editedRecord = {
+				blocks: [ existingBlock ],
+			} as unknown as Post;
+
+			const changes = getPostChangesFromCRDTDoc(
+				doc,
+				editedRecord,
+				defaultSyncedProperties
+			);
+
+			const blockList = changes.blocks as Block[];
+			expect( blockList ).toBeDefined();
+			expect( blockList[ 0 ] ).not.toBe( existingBlock ); // Reference should be updated
+			expect( ( blockList[ 0 ].attributes as any ).content.text ).toBe(
+				'Changed content'
+			);
+		} );
+
 		it( 'returns nested rich-text in array attributes as RichTextData', () => {
 			// Add a table block to the CRDT doc with nested cell content
 			// stored as plain strings.
