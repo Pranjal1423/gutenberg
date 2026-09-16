@@ -212,4 +212,40 @@ describe( 'useMetaBoxInitialization', () => {
 
 		expect( updateEditorSettings ).not.toHaveBeenCalled();
 	} );
+
+	it( 'initializes metaboxes when enabled and editor is ready', () => {
+		const mockStores = createMockStores( {
+			isEditorReady: true,
+			metaBoxes: [ { id: 'my-metabox', title: 'My Meta Box' } ],
+		} );
+		const registry = createRegistry( mockStores );
+
+		renderHook( registry, true );
+
+		expect( initializeMetaBoxes ).toHaveBeenCalled();
+	} );
+
+	it( 'does not initialize metaboxes when editor is not ready', () => {
+		const mockStores = createMockStores( {
+			isEditorReady: false,
+			metaBoxes: [ { id: 'my-metabox', title: 'My Meta Box' } ],
+		} );
+		const registry = createRegistry( mockStores );
+
+		renderHook( registry, true );
+
+		expect( initializeMetaBoxes ).not.toHaveBeenCalled();
+	} );
+
+	it( 'does not initialize metaboxes when enabled is false', () => {
+		const mockStores = createMockStores( {
+			isEditorReady: true,
+			metaBoxes: [ { id: 'my-metabox', title: 'My Meta Box' } ],
+		} );
+		const registry = createRegistry( mockStores );
+
+		renderHook( registry, false );
+
+		expect( initializeMetaBoxes ).not.toHaveBeenCalled();
+	} );
 } );

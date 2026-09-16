@@ -204,17 +204,25 @@ export const ExperimentalEditorProvider = withRegistryProvider(
 				// user's saved preference.
 				const _defaultMode =
 					renderingMode ?? getDefaultRenderingMode( post.type );
+				const _isReady = __unstableIsEditorReady();
 				/**
 				 * To avoid content "flash", wait until rendering mode has been resolved.
 				 * This is important for the initial render of the editor.
 				 *
 				 * - Wait for template to be resolved if the default mode is 'template-locked'.
+				 * - If the editor is ready but no template was resolved, fall back to 'post-only'.
 				 * - Wait for default mode to be resolved otherwise.
 				 */
 				const hasResolvedDefaultMode =
 					_defaultMode === 'template-locked'
-						? hasTemplate
+						? hasTemplate || _isReady
 						: _defaultMode !== undefined;
+				const effectiveDefaultMode =
+					_defaultMode === 'template-locked' &&
+					! hasTemplate &&
+					_isReady
+						? 'post-only'
+						: _defaultMode;
 				// Wait until the default mode is retrieved and start rendering canvas.
 				const isRenderingModeReady = _defaultMode !== undefined;
 
@@ -228,10 +236,10 @@ export const ExperimentalEditorProvider = withRegistryProvider(
 
 				return {
 					editorSettings: getEditorSettings(),
-					isReady: __unstableIsEditorReady(),
+					isReady: _isReady,
 					mode: isRenderingModeReady ? _mode : undefined,
 					defaultMode: hasResolvedDefaultMode
-						? _defaultMode
+						? effectiveDefaultMode
 						: undefined,
 					selection: entityEdits?.selection,
 					postTypeEntities:
